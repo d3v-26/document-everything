@@ -1,206 +1,171 @@
-# Documentation Templates
+# Documentation Report Templates
 
-Templates for consistent documentation output. Adapt to project context — remove sections that don't apply.
+Standardized Nextflow-inspired report format. All project types use the same structural skeleton — only section content varies. See `project-types/` for type-specific section guidance.
 
 ---
 
-## Project Overview Template
+## Standard Report Structure
 
-Use for `PROJECT_DOCS.md` (small projects) or `docs/overview.md` (medium/large).
+Every report follows this structure, regardless of project type or size:
 
 ```markdown
-# [Project Name] — Documentation
+# [Project Name] · Documentation Report
 
-> [One sentence: what this project does and for whom]
+> [One sentence: what this project does]
 
-Generated: [date]
+| | |
+|---|---|
+| **Type** | [project_type from manifest] |
+| **Generated** | [date] |
+| **Language(s)** | [languages] |
+| **Source files** | [count] |
+| **Repository** | [git_remote or —] |
 
 ---
 
-## What This Project Does
+## Summary
 
-[2-4 sentences explaining the project's purpose, the problem it solves, and who uses it]
+[3-5 sentences covering: purpose, who uses it, what problem it solves, and the core approach]
+
+---
 
 ## Architecture
 
-[ASCII diagram or mermaid diagram showing how components relate]
+[Component diagram — ASCII or mermaid. Show top-level components and how data/control flows between them]
 
-**Key components:**
-- `[component]` — [what it does]
-- `[component]` — [what it does]
+**Components:**
+
+| Component | Location | Responsibility |
+|-----------|----------|----------------|
+| [name] | `[path]` | [what it does] |
+
+---
 
 ## Entry Points
 
-| File | Purpose |
-|------|---------|
-| `[file]` | [what happens when you run it] |
+| File | Invocation | Purpose |
+|------|-----------|---------|
+| `[path]` | `[how to run]` | [what it starts] |
 
-## Technology Stack
+---
 
-| Layer | Technology | Why |
-|-------|-----------|-----|
-| [layer] | [tech] | [reason inferred from code/config] |
+## [Type-Specific Section(s)]
 
-## Key Data Flows
+[See project-types/ reference for what goes here — processes, routes, components, commands, etc.]
 
-[Describe 1-3 important flows through the system, e.g., "A request comes in → auth middleware → handler → database → response"]
+---
+
+## Configuration
+
+| Parameter | Location | Purpose | Default |
+|-----------|----------|---------|---------|
+| [name] | `[file]` | [what it controls] | [value or —] |
+
+---
+
+## Dependencies
+
+| Dependency | Version | Why |
+|-----------|---------|-----|
+| [name] | [version] | [inferred purpose] |
 
 ---
 
 ## File Reference
 
-[List of all source files with their documentation — see per-file template below]
+[Per-file entries — see per-file template below]
 
 ---
 
 ## Architectural Decisions
 
-[See decisions template below]
+[ADR entries — see ADR template below]
+
+---
+
+## Known Issues & Technical Debt
+
+| Location | Issue | Severity |
+|----------|-------|---------|
+| `[file:line]` | [description from TODO/FIXME/HACK comment] | [low/medium/high] |
+
+*Only include if TODO/FIXME/HACK comments are found in the code.*
 ```
 
 ---
 
-## Per-File Documentation Template
+## Per-File Entry Template
 
-For each source/entry file. Keep concise — 5-15 lines per file is the target.
+One entry per source/entry file. Keep to 5–10 lines.
 
 ```markdown
-### `[relative/path/to/file.py]`
+### `[relative/path/to/file]`
 
-**Purpose:** [One sentence — what this file is responsible for]
+**Purpose:** [One sentence]
 
-**Why it exists:** [Why this was written — inferred from code, comments, or git history]
+**Why it exists:** [Inferred from code, comments, or git history]
 
-**Key exports / public API:**
-- `[FunctionName(args)]` — [what it does]
-- `[ClassName]` — [what it represents]
+**Key exports:**
+- `[Symbol]` — [what it does]
 
-**Dependencies:** [Notable imports that reveal what this file relies on]
-
-**Notes:** [Anything non-obvious — gotchas, known issues, future plans mentioned in comments]
+**Notes:** [Gotchas, known issues, non-obvious constraints]
 ```
 
-### Minimal variant (for simple/obvious files)
+Minimal variant for simple/obvious files:
 
 ```markdown
-### `[path/to/file.py]`
+### `[path/to/file]`
 
-[One sentence purpose.] [One sentence about key exports if non-obvious.]
+[One sentence purpose. Key export if non-obvious.]
 ```
 
 ---
 
-## Architecture Diagram Templates
+## ADR Template
 
-### Simple (ASCII)
+```markdown
+### [Short decision title]
 
-```
-┌─────────────┐     ┌─────────────┐     ┌─────────────┐
-│   Client    │────▶│   Server    │────▶│  Database   │
-└─────────────┘     └─────────────┘     └─────────────┘
-                           │
-                    ┌──────┴──────┐
-                    │    Cache    │
-                    └─────────────┘
-```
+**Context:** [Why this decision was needed]
 
-### Mermaid (use when project has clear data flow)
+**Decision:** [What was chosen]
 
-```mermaid
-graph LR
-    A[Entry Point] --> B[Router]
-    B --> C[Handler]
-    C --> D[Service]
-    D --> E[(Database)]
-    D --> F[External API]
+**Evidence:** `[file:line]` — [what the code shows]
+
+**Consequence:** [What this enables or constrains]
 ```
 
 ---
 
-## Architectural Decision Record (ADR) Template
+## Output Size Rules
 
-Use for each non-obvious decision discovered in code. Collect these in `docs/decisions.md`.
+| Size class | Source files | Output location |
+|-----------|-------------|----------------|
+| `small` | < 20 | `PROJECT_DOCS.md` at project root |
+| `medium` | 20–100 | `docs/overview.md` + `docs/files.md` + `docs/decisions.md` |
+| `large` | > 100 | `docs/overview.md` + `docs/modules/[name].md` + `docs/decisions.md` |
 
-```markdown
-## ADR: [Short title of the decision]
-
-**Status:** [Implemented / Superseded / Proposed]
-
-**Context:**
-[Why was this decision needed? What problem was being solved?]
-
-**Decision:**
-[What was decided?]
-
-**Evidence in code:**
-- `[file:line]` — [what the code shows]
-- Comment: "[relevant comment from code]"
-
-**Consequences:**
-[What does this decision enable or constrain?]
-
-**Alternatives considered:**
-[If visible from code comments or git history — what else was considered and why rejected]
-```
+For `large` projects, group files by top-level directory into module files instead of one entry per file.
 
 ---
 
 ## CLAUDE.md Update Template
 
-When the skill completes, update or create the project's CLAUDE.md:
-
 ```markdown
-# [Project Name]
+## [Project Name] — Auto-generated Summary
 
-## What This Project Does
+**What it does:** [1-2 sentences]
 
-[1-2 sentences from the overview]
+**Project type:** [type] | **Stack:** [languages/frameworks]
 
-## Architecture
-
-[Key architectural pattern identified]
-
-**Important files:**
+**Key files:**
 | File | Role |
 |------|------|
-| `[entry]` | [purpose] |
-| `[key source]` | [purpose] |
-| `[key config]` | [purpose] |
+| `[path]` | [purpose] |
 
-## Tech Stack
+**How to run:** `[command from README/Makefile/package.json]`
 
-[Languages and key frameworks]
-
-## How to Run
-
-[Extracted from README, Makefile, or package.json scripts]
-
-## Key Conventions
-
-[Naming patterns, coding style, organizational patterns observed]
-
-## Documentation Generated
-
-[Date] — `document-everything` skill generated docs in `[location]`
+**Docs generated:** [date] → `[output location]`
 ```
 
----
-
-## Output Size Guidance
-
-| Project Size | Source Files | Recommended Output |
-|-------------|-------------|-------------------|
-| Small | < 20 | Single `PROJECT_DOCS.md` in project root |
-| Medium | 20–100 | `docs/overview.md` + `docs/files.md` + `docs/decisions.md` |
-| Large | 100+ | `docs/` directory with per-module files |
-
-For **large** projects, organize docs by module/package rather than per-file:
-```
-docs/
-├── overview.md
-├── modules/
-│   ├── auth.md
-│   ├── api.md
-│   └── database.md
-└── decisions.md
-```
+Add this as a new section at the bottom of an existing CLAUDE.md. Never overwrite existing content.

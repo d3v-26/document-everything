@@ -120,6 +120,74 @@ DOC_NAMES = {"README", "CHANGELOG", "CONTRIBUTING", "LICENSE", "AUTHORS",
 TEST_DIR_NAMES = {"test", "tests", "spec", "specs", "__tests__", "e2e", "integration"}
 TEST_NAME_PATTERNS = ["test_", "_test.", ".test.", ".spec.", "_spec."]
 
+# Project type detection signatures
+# Each entry: (project_type, required_files, optional_boosters)
+# required_files: any one of these present → strong signal
+# optional_boosters: additional files that raise confidence
+PROJECT_TYPE_SIGNATURES: list[tuple[str, set[str], set[str]]] = [
+    ("nextflow", {".nf", "nextflow.config", "nextflow_schema.json"}, {"main.nf", "modules/"}),
+    ("frontend", {"vite.config.js", "vite.config.ts", "next.config.js", "next.config.ts",
+                   "nuxt.config.js", "nuxt.config.ts", "svelte.config.js", "angular.json",
+                   "remix.config.js"}, {"index.html", "public/"}),
+    ("rest-api", {"openapi.yaml", "openapi.yml", "swagger.yaml", "swagger.yml",
+                   "api.py", "routes.py", "router.py", "app.py"}, {"controllers/", "routes/", "handlers/"}),
+    ("cli", {"cli.py", "cli.js", "cli.ts", "cmd/", "commands/"}, {"main.py", "main.go"}),
+    ("data-pipeline", {"pipeline.py", "dags/", "airflow.cfg", "prefect.yaml",
+                        "kedro_pipeline.py", "dbt_project.yml"}, {"data/", "etl/", "transforms/"}),
+    ("library", {"setup.py", "pyproject.toml", "Cargo.toml", "go.mod"}, {"src/", "lib/"}),
+]
+
+
+def detect_project_type(files: list[dict], root: Path) -> str:
+    """Infer project type from file signatures. Returns type string or 'generic'."""
+    all_names = {f["name"] for f in files}
+    all_extensions = {f["extension"] for f in files}
+    # Top-level directory names
+    top_level_dirs = {p.name for p in root.iterdir() if p.is_dir() and not p.name.startswith(".")}
+
+    scores: dict[str, int] = {}
+
+    for project_type, required, boosters in PROJECT_TYPE_SIGNATURES:
+        score = 0
+        for sig in required:
+            if sig.startswith("."):
+                # Extension match
+                if sig in all_extensions:
+                    score += 3
+            elif sig.endswith("/"):
+                # Directory match
+                if sig.rstrip("/") in top_level_dirs:
+                    score += 2
+            else:
+                # Filename match
+                if sig in all_names:
+                    score += 3
+        for sig in boosters:
+            if sig.endswith("/"):
+                if sig.rstrip("/") in top_level_dirs:
+                    score += 1
+            elif sig in all_names:
+                score += 1
+        if score > 0:
+            scores[project_type] = score
+
+    if not scores:
+        return "generic"
+
+    best = max(scores, key=lambda t: scores[t])
+
+    # Require a minimum signal threshold to avoid false positives
+    if scores[best] < 2:
+        return "generic"
+
+    # Disambiguate library vs rest-api: if it has route/controller dirs, prefer rest-api
+    if best == "library" and any(
+        d in top_level_dirs for d in ("routes", "controllers", "handlers", "api")
+    ):
+        return "rest-api"
+
+    return best
+
 
 def is_skip_dir(name: str) -> bool:
     return name in SKIP_DIRS or name.startswith(".")
@@ -275,6 +343,8 @@ def scan_project(root_path: str | None = None) -> dict:
     else:
         size_class = "large"
 
+    project_type = detect_project_type(files, root)
+
     return {
         "root": str(root),
         "scanned_at": datetime.now(timezone.utc).isoformat(),
@@ -287,6 +357,7 @@ def scan_project(root_path: str | None = None) -> dict:
             "languages": sorted(languages),
             "source_file_count": source_count,
             "size_class": size_class,
+            "project_type": project_type,
         },
     }
 

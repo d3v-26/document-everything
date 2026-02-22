@@ -1,137 +1,130 @@
 ---
 name: document-everything
-description: Comprehensively documents a codebase by analyzing every file and generating structured markdown documentation. Documents what each file does, why it was written, how components relate, and what architectural decisions were made. Use when the user says "document everything", "document my project", "document this codebase", "what does each file do", "generate docs for my code", "explain my codebase", "why was this coded", "create project documentation", or any variation of wanting to understand or document an existing project.
+description: Comprehensively documents a codebase by analyzing every file and generating a standardized documentation report. Documents what each file does, why it was written, how components relate, and what architectural decisions were made. Automatically detects project type (Nextflow pipeline, REST API, frontend app, CLI tool, library, data pipeline) and applies the right report template. Use when the user says "document everything", "document my project", "document this codebase", "what does each file do", "generate docs for my code", "explain my codebase", "why was this coded", "create project documentation", "generate a report", or any variation of wanting to understand or document an existing project.
 ---
 
 # Document Everything
 
-Generates comprehensive documentation for a codebase: what each file does, why it exists, and how everything fits together.
+Generates a standardized documentation report for any codebase. Detects the project type, applies the matching template, and produces consistent structured output.
 
 ## Workflow Overview
 
-1. Scan the project with `scan_project.py` → get a file manifest
-2. Read the manifest → understand project shape and size
-3. Read key files by category (entry → config → source → tests)
-4. Generate documentation using templates from `references/doc-templates.md`
-5. Write output files
-6. Update the project's `CLAUDE.md`
-
-Load `references/file-classification.md` before reading any source files — it explains how to analyze each file type and infer "why" from code signals.
-
-Load `references/doc-templates.md` before writing any output — it provides templates for all output formats.
+1. Scan the project with `scan_project.py` → JSON manifest with `project_type`
+2. Load `references/doc-templates.md` — the standard report structure used for all output
+3. Load the matching type guide from `references/project-types/[type].md`
+4. Read files by priority (entry → config → source → tests)
+5. Generate the report using the standard structure + type-specific sections
+6. Write output files
+7. Update the project's `CLAUDE.md`
 
 ---
 
 ## Step 1: Scan the Project
 
-Run `scan_project.py` from the skill's `scripts/` directory:
-
 ```bash
 python /path/to/skill/scripts/scan_project.py [project_root]
 ```
 
-Use the current working directory if the user hasn't specified a path. The script outputs a JSON manifest with all files classified by category.
+Use the current working directory if the user hasn't specified a path.
 
-**If `scan_project.py` can't be located**, fall back to listing files manually: `find . -type f` excluding `node_modules`, `.git`, `__pycache__`, `dist`, `build`.
+**If `scan_project.py` can't be located**, fall back to: `find . -type f` excluding `node_modules`, `.git`, `__pycache__`, `dist`, `build`.
 
 ---
 
-## Step 2: Understand the Project
+## Step 2: Load Templates and Type Guide
 
-From the manifest:
-- **`size_class`**: determines output format (small → single file, medium/large → directory)
-- **`summary.languages`**: determines analysis approach (load relevant sections of file-classification.md)
-- **`is_git_repo`**: if true, git history signals are available in the manifest
-- **`files` with `category: "entry"`**: read these first — they reveal the overall purpose
+Read `references/doc-templates.md` now — it defines the standard report skeleton used for all output.
 
-If a `README.md` exists, read it first. It often contains the best project description.
+Then read the project-type guide based on `summary.project_type` from the manifest:
 
-Announce to the user: "Scanning complete. Found [N] source files across [languages]. Generating documentation..."
+| `project_type` | Load |
+|---------------|------|
+| `nextflow` | `references/project-types/nextflow.md` |
+| `rest-api` | `references/project-types/rest-api.md` |
+| `frontend` | `references/project-types/frontend.md` |
+| `cli` | `references/project-types/cli.md` |
+| `library` | `references/project-types/library.md` |
+| `data-pipeline` | `references/project-types/data-pipeline.md` |
+| `generic` | `references/project-types/generic.md` |
+
+Also load `references/file-classification.md` — it explains how to analyze each file type and infer "why" from code signals.
+
+Announce to the user: "Detected project type: **[type]**. Scanning complete — [N] source files in [languages]. Generating report..."
 
 ---
 
 ## Step 3: Read Files by Priority
 
-Read files in this order, but be smart about quantity:
-
 **Always read:**
-- All `entry` files (usually 1-3)
+- All `entry` files (usually 1–3)
 - `README.md` if present
-- `package.json`, `pyproject.toml`, or equivalent (reveals dependencies and purpose)
-- `Dockerfile` / `docker-compose.yml` if present (reveals deployment context)
-- `.env.example` if present (reveals configuration)
+- Primary package manifest (`package.json`, `pyproject.toml`, `Cargo.toml`, `go.mod`)
+- `Dockerfile` / `docker-compose.yml` if present
+- `.env.example` if present
 
-**Read representative samples (not exhaustive for large projects):**
-- For `source` files: read all if ≤ 20, sample by directory/module if > 20
-- For `test` files: read 2-5 to understand testing patterns; note what behavior they protect
-- For `config` files: read CI/CD files, build configs
+**For Nextflow projects, additionally read:**
+- `main.nf`, `nextflow.config`, `nextflow_schema.json`
+- All files in `modules/` (or a sample if > 20)
 
-**When sampling large projects:**
-- Prioritize files with non-obvious names over obvious ones (`auth_service.py` > `utils.py`)
-- Read at least one file from each top-level directory
-- Check git commit messages in the manifest to identify recently active files
+**Source file sampling by size:**
+- ≤ 20 source files: read all
+- 21–100: read all, but skim very large files (> 500 lines) — focus on the top 100 lines + exports
+- > 100: read at least one file per top-level directory; prioritize non-obvious filenames
+
+**Tests:** read 2–5 to understand testing patterns. Note what behavior they protect.
 
 ---
 
-## Step 4: Generate Documentation
+## Step 4: Generate the Report
 
-### Small project (< 20 source files) → `PROJECT_DOCS.md`
+Use the standard report skeleton from `references/doc-templates.md`. Fill in each section:
 
-Write a single file at the project root with:
-1. Overview section (what + why the project exists)
-2. Architecture section (component diagram + relationships)
-3. File reference (each source/entry file documented)
-4. Architectural decisions (non-obvious choices found in code)
+- **Header block**: project name, type, date, languages, file count, git remote
+- **Summary**: 3–5 sentences on purpose, audience, problem solved, approach
+- **Architecture**: component diagram + table
+- **Entry Points**: table of how to invoke the project
+- **Type-specific section**: from the project-type guide (processes, routes, commands, etc.)
+- **Configuration**: table of all parameters from config files + `.env.example`
+- **Dependencies**: table from package manifest with inferred purpose
+- **File Reference**: per-file entries for all source/entry files
+- **Architectural Decisions**: ADRs for non-obvious choices
+- **Known Issues**: any `TODO` / `FIXME` / `HACK` comments found, in a table
 
-### Medium project (20–100 source files) → `docs/` directory
+Drop any section that genuinely has no content (e.g., no known issues found → omit that section).
 
-Create:
-- `docs/overview.md` — architecture, entry points, data flows, tech stack
-- `docs/files.md` — all source files documented
-- `docs/decisions.md` — ADRs for non-obvious choices
+### Output location by size
 
-### Large project (> 100 source files) → `docs/` with module structure
-
-Create:
-- `docs/overview.md` — high-level architecture only
-- `docs/modules/[name].md` — one file per top-level directory/package
-- `docs/decisions.md` — ADRs
+| `size_class` | Write to |
+|-------------|---------|
+| `small` | `PROJECT_DOCS.md` at project root |
+| `medium` | `docs/overview.md` + `docs/files.md` + `docs/decisions.md` |
+| `large` | `docs/overview.md` + `docs/modules/[dir].md` per top-level dir + `docs/decisions.md` |
 
 ---
 
 ## Step 5: Writing Guidelines
 
-**Be specific, not generic.** Bad: "This file handles authentication." Good: "This file implements JWT token validation using the `jose` library, with a 24h expiry and refresh token rotation on each use."
+**Be specific, not generic.**
+- Bad: "This file handles authentication."
+- Good: "Implements JWT validation using `jose`, with 24h expiry and refresh token rotation on each use."
 
-**Document the "why" with evidence.** Bad: "This was written to handle errors." Good: "The retry logic with exponential backoff (lines 45-67) exists because the upstream payment API returns 503s under load — evidenced by the comment `# payment API flaky, see incident-2024-03`."
+**Document the "why" with evidence.**
+- Bad: "This was written to handle errors."
+- Good: "Retry logic with exponential backoff exists because the upstream payment API returns 503s under load — see comment `# payment API flaky, see incident-2024-03`."
 
-**Note non-obvious choices.** If a file uses an unusual pattern or library, explain why (if inferable). If a function looks like it could be simpler, note any constraints that required the complexity.
-
-**Extract decisions from code signals:**
-- `# HACK:`, `# TODO:`, `# FIXME:` comments → document as known issues
-- `legacy`, `compat`, `deprecated` in names → document as transitional code
-- Feature flags → document what they enable/disable
-- Unusual dependencies → note why they're needed over alternatives
+**Every table cell should say something.** If you can't determine the "Why" for a dependency, write "not immediately clear — [what the package name suggests]" rather than leaving it blank.
 
 ---
 
 ## Step 6: Update CLAUDE.md
 
-After generating docs, update (or create) the project's `CLAUDE.md` using the template in `references/doc-templates.md`.
-
-The CLAUDE.md update should include:
-- What the project does (1-2 sentences)
-- Key files and their roles
-- How to run the project
-- Where the generated documentation lives
-
-If the project already has a `CLAUDE.md`, add a section at the bottom rather than overwriting existing content.
+After writing the report, append the CLAUDE.md update block from `references/doc-templates.md` to the project's `CLAUDE.md`. Never overwrite existing content — add a new section at the bottom.
 
 ---
 
 ## Communication
 
-- Tell the user what you're doing at each step: "Scanning project...", "Reading entry points...", "Analyzing [N] source files...", "Writing documentation..."
-- When done, tell the user exactly what files were created and where
-- If the project is large and you sampled files, tell the user which directories you covered and which you skipped
-- Offer to go deeper on any specific module if the user wants more detail
+- Announce detected project type and file count before starting analysis
+- Name the output file(s) when done: "Report written to `PROJECT_DOCS.md`"
+- If large project was sampled, say which directories were covered vs skipped
+- Offer to go deeper on any specific module or section
