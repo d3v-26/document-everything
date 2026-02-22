@@ -10,12 +10,13 @@ Generates a standardized documentation report for any codebase. Detects the proj
 ## Workflow Overview
 
 1. Scan the project with `scan_project.py` → JSON manifest with `project_type`
-2. Load `references/doc-templates.md` — the standard report structure used for all output
-3. Load the matching type guide from `references/project-types/[type].md`
-4. Read files by priority (entry → config → source → tests)
-5. Generate the report using the standard structure + type-specific sections
-6. Write output files
-7. Update the project's `CLAUDE.md`
+2. Load `references/doc-templates.md` — the standard report structure
+3. Load `references/cross-cutting-standards.md` — Diataxis, MADR ADRs, C4, Keep a Changelog, standard-readme
+4. Load the matching type guide from `references/project-types/[type].md`
+5. Read files by priority (entry → config → source → tests)
+6. Generate the report using the standard structure + type-specific sections
+7. Write output files
+8. Update the project's `CLAUDE.md`
 
 ---
 
@@ -34,6 +35,8 @@ Use the current working directory if the user hasn't specified a path.
 ## Step 2: Load Templates and Type Guide
 
 Read `references/doc-templates.md` now — it defines the standard report skeleton used for all output.
+
+Also read `references/cross-cutting-standards.md` now. It defines: Diataxis (how to organize `docs/`), MADR (ADR format), Keep a Changelog, standard-readme structure, and C4 model diagrams. Apply these to every project regardless of type.
 
 Then read the project-type guide based on `summary.project_type` from the manifest:
 

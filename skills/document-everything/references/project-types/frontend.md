@@ -1,19 +1,14 @@
 # Project Type: Frontend Application
 
-Guidance for documenting frontend web applications (React, Vue, Svelte, Next.js, etc.).
+Standard: **Component Story Format 3 (CSF3) + Storybook Autodocs** for component libraries; **Diataxis framework** for app-level documentation.
 
-## Key Files to Read First
+Reference: https://storybook.js.org/docs/writing-docs/autodocs
 
-1. Entry point (`index.html`, `main.ts`, `_app.tsx`, `app.vue`)
-2. Router config — reveals page/route structure
-3. State management store files (Redux, Pinia, Zustand, etc.)
-4. `package.json` — reveals framework and key libraries
-5. Build config (`vite.config.ts`, `next.config.js`, etc.)
-6. `.env.example` — reveals required API endpoints and feature flags
+---
 
 ## Type-Specific Section: UI Structure
 
-Replace the `[Type-Specific Section(s)]` placeholder in the report with:
+Replace `[Type-Specific Section(s)]` in the report with:
 
 ```markdown
 ## UI Structure
@@ -22,17 +17,22 @@ Replace the `[Type-Specific Section(s)]` placeholder in the report with:
 
 | Route | Component | Auth Required | Purpose |
 |-------|-----------|--------------|---------|
-| `/[path]` | `[file]` | [yes/no] | [what the user does here] |
+| `/` | `pages/Home` | No | Landing page / dashboard |
+| `/[resource]` | `pages/[Resource]List` | Yes | Resource listing with filters |
+| `/[resource]/:id` | `pages/[Resource]Detail` | Yes | Detail view |
+| `/settings` | `pages/Settings` | Yes | User preferences |
 
 ### Component Hierarchy
 
-[Top-level layout and key shared components]
+[Top-level layout and composition]
 
 ```
 Layout
-├── Header (navigation, auth state)
-├── [Page components]
-│   └── [Feature components]
+├── Header (navigation, auth state, notifications)
+├── Sidebar (if applicable)
+├── Page Components
+│   └── Feature Components
+│       └── UI Primitives (Button, Input, etc.)
 └── Footer
 ```
 
@@ -40,41 +40,73 @@ Layout
 
 | Store / Context | File | What it manages |
 |----------------|------|----------------|
-| [name] | `[path]` | [what state lives here] |
+| `[AuthStore]` | `stores/auth` | Current user, session token, permissions |
+| `[UIStore]` | `stores/ui` | Theme, sidebar open/close, modal state |
 
 ### API Integration
 
 | Service / Hook | File | Endpoints consumed |
 |---------------|------|--------------------|
-| [name] | `[path]` | `[METHOD /path]` |
+| `use[Resource]` | `hooks/use[Resource]` | `GET /[resource]`, `POST /[resource]` |
 ```
+
+---
+
+## Diataxis Documentation Structure
+
+For frontend apps, organize docs following the Diataxis framework — keep these four types strictly separate:
+
+| Type | What to write | Example |
+|------|--------------|---------|
+| **Tutorial** | Step-by-step walkthrough for a new developer | "Set up the dev environment and add a new page" |
+| **How-to Guide** | Recipe for a specific task | "How to add a new form field", "How to add a route" |
+| **Reference** | Factual component API docs | Props table, event list, slot names |
+| **Explanation** | Background and rationale | "Why we chose Zustand over Redux", "How auth flow works" |
+
+---
+
+## Storybook Component Documentation (if component library)
+
+If the project includes a component library or design system, document components using Storybook CSF3 conventions:
+
+For each component, document:
+1. **Purpose** — what UI problem it solves
+2. **Props / API** — name, type, required, default, description for each prop
+3. **Variants** — what visual states exist (primary/secondary, sizes, disabled, loading)
+4. **Usage guidance** — when to use vs alternatives
+5. **Accessibility** — keyboard behavior, ARIA roles, focus management
+
+---
 
 ## What to Look For
 
 **In page/route components:**
-- What data is fetched on load (`useEffect`, `getServerSideProps`, `loader`)
-- What user interactions are handled
-- What sub-components are composed
+- Data fetching patterns (`useEffect`, `getServerSideProps`, `loader`, `useQuery`) → what data drives each page
+- User interaction handlers → what actions are available on each page
+- Auth guards/route protection → which pages require authentication
 
 **In shared components:**
-- Props interface = the component's contract
-- Internal state = what the component manages independently
-- Context consumption = what global state it depends on
+- Props interface / TypeScript types → the component's contract
+- Internal `useState` → what the component manages independently
+- Context consumption → what global state it depends on
+- Forwarded refs → designed for programmatic control by parents
 
-**In state stores:**
-- State shape = what data lives globally
-- Actions/mutations = what can change and how
-- Selectors = what derived data is computed
+**In state management:**
+- State shape → what data lives globally vs locally
+- Side effects (`useEffect`, actions, middleware) → what triggers state changes
+- Selectors / derived state → computed values and their performance implications
 
-**In API service files:**
-- Base URL patterns = which backends are called
-- Auth headers = how requests are authenticated
-- Error handling = how failures surface to users
+**In API service files / hooks:**
+- Base URL → which backends are called
+- Auth headers → how requests are authenticated
+- Cache/stale settings (React Query, SWR) → freshness strategy
+- Optimistic updates → UX decisions that need documentation
 
 ## Inferring "Why"
 
-- Component naming (`Legacy`, `V2`, `Redesigned`) = evolution history
-- Feature flag checks = what is in gradual rollout
-- `// TODO: move to server component` (Next.js) = performance optimization in progress
-- Duplicated components in different directories = multi-team ownership or A/B testing
-- Custom hooks wrapping native APIs = abstraction over browser inconsistencies
+- Component named `Legacy`, `V2`, `Redesigned` → evolution history; document what it replaced
+- Feature flag checks → gradual rollout; document what the flag controls
+- `// TODO: move to server component` (Next.js) → performance optimization planned
+- Duplicated components in separate directories → A/B test or multi-team ownership
+- Custom hooks wrapping native browser APIs → browser inconsistency workaround
+- `memo()` / `useMemo` / `useCallback` on a component → known performance issue
