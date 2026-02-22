@@ -8,7 +8,7 @@ In Claude Code, run:
 
 ```
 /plugin marketplace add d3v-26/document-everything
-/plugin install document-everything@d3v-26/document-everything
+/plugin install document-everything@document-everything
 ```
 
 ## Usage

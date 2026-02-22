@@ -1,0 +1,22 @@
+{
+  "name": "document-everything",
+  "owner": {
+    "name": "d3v-26",
+    "email": ""
+  },
+  "metadata": {
+    "description": "A skill that auto-documents any codebase — what each file does, why it was written, and how everything fits together.",
+    "version": "1.0.0"
+  },
+  "plugins": [
+    {
+      "name": "document-everything",
+      "description": "Auto-documents any codebase with project-type-aware reports. Detects Nextflow pipelines, REST APIs, frontends, CLIs, libraries, and data pipelines and applies the right template.",
+      "source": "./",
+      "strict": false,
+      "skills": [
+        "./skills/document-everything"
+      ]
+    }
+  ]
+}
