@@ -99,3 +99,31 @@ python3 package_skill.py /Users/nik/Desktop/Projects/document-everything/skills/
 | `PLAN.md` | Original implementation plan |
 | `dist/document-everything.skill` | Packaged skill (zip) ready to install |
 | `.claude-plugin/marketplace.json` | Marketplace registration for `/plugin marketplace add` |
+| `.claude-plugin/plugin.json` | Plugin manifest — required for Claude Code to load skills at runtime |
+
+## Plugin System: Two Separate Files
+
+- **`marketplace.json`** — Used only during `/plugin marketplace add` and `/plugin install`. Tells the marketplace system what plugins exist and where skills are.
+- **`plugin.json`** — Used at Claude Code startup to load the installed plugin. Without this file, installed skills are never surfaced. Skills auto-discovered from `skills/*/SKILL.md`.
+
+---
+
+## document-everything — Auto-generated Summary
+
+**What it does:** A Claude Code skill that scans any codebase, detects its project type, and generates a structured documentation report applying the matching industry standard (nf-core, OpenAPI 3.1, Diataxis, POSIX man pages, NumPy docstrings, dbt schema.yml, or standard-readme).
+
+**Project type:** generic (skill project) | **Stack:** Python (stdlib only)
+
+**Key files:**
+| File | Role |
+|------|------|
+| `skills/document-everything/SKILL.md` | Skill entry point — triggers on doc requests, defines 8-step workflow |
+| `skills/document-everything/scripts/scan_project.py` | Project scanner — classifies files, detects type, emits JSON manifest |
+| `skills/document-everything/references/doc-templates.md` | Standard report skeleton used for all output |
+| `skills/document-everything/references/cross-cutting-standards.md` | Diataxis, MADR, Keep a Changelog, standard-readme, C4 |
+| `skills/document-everything/references/project-types/` | Seven type-specific documentation guides |
+| `.claude-plugin/marketplace.json` | Marketplace registration for `/plugin marketplace add d3v-26/document-everything` |
+
+**How to run:** `python skills/document-everything/scripts/scan_project.py [project_root]` (scanner only); full skill via Claude Code natural language prompt.
+
+**Docs generated:** 2026-02-23 → `PROJECT_DOCS.md`

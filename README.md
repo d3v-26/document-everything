@@ -2,12 +2,26 @@
 
 A Claude Code skill that automatically documents any codebase — following industry standards for each project type.
 
+## Table of Contents
+
+- [Install](#install)
+- [Usage](#usage)
+- [Project types](#project-types)
+- [What it generates](#what-it-generates)
+- [Cross-cutting standards](#cross-cutting-standards)
+- [How it works](#how-it-works)
+- [Contributing](#contributing)
+
 ## Install
 
 ```
 /plugin marketplace add d3v-26/document-everything
 /plugin install document-everything@document-everything
 ```
+
+Restart Claude Code after installing. The skill is auto-detected from context — no slash command needed.
+
+**Already installed?** Run `/plugin update document-everything@document-everything` to pick up the latest version.
 
 ## Usage
 
@@ -82,3 +96,11 @@ Regardless of project type, every report applies:
 4. Infers "why" from code signals: comments, naming, git history, feature flags, patterns
 5. Writes the report using the industry-standard structure for the detected type
 6. Updates `CLAUDE.md` with a project summary
+
+## Contributing
+
+Bug reports and pull requests welcome at [d3v-26/document-everything](https://github.com/d3v-26/document-everything).
+
+## License
+
+MIT

@@ -1,0 +1,11 @@
+{
+  "name": "document-everything",
+  "version": "1.0.0",
+  "description": "A skill that auto-documents any codebase — what each file does, why it was written, and how everything fits together.",
+  "author": {
+    "name": "d3v-26"
+  },
+  "homepage": "https://github.com/d3v-26/document-everything",
+  "repository": "https://github.com/d3v-26/document-everything",
+  "keywords": ["documentation", "codebase", "analysis"]
+}
