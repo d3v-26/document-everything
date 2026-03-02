@@ -31,13 +31,67 @@ Every report follows this structure, regardless of project type or size:
 
 ## Architecture
 
-[Component diagram — ASCII or mermaid. Show top-level components and how data/control flows between them]
+Generate a **Mermaid architecture diagram** showing top-level components and how data or control flows between them. Use `graph TD` for top-down layouts or `graph LR` for left-right pipelines.
+
+```mermaid
+graph TD
+    A[Component A] --> B[Component B]
+    B --> C[(Storage)]
+    B --> D[Component D]
+```
 
 **Components:**
 
 | Component | Location | Responsibility |
 |-----------|----------|----------------|
 | [name] | `[path]` | [what it does] |
+
+---
+
+## Diagrams
+
+Generate **3–5 Mermaid diagrams** spread across the report. Each diagram must be meaningful — skip a type if it doesn't apply to this project. Prefer diagrams over prose for showing relationships and flows.
+
+### Required diagram types (use what applies)
+
+**1. Data flow** — how data moves through the system end-to-end:
+```mermaid
+flowchart LR
+    Input --> Process --> Output
+```
+
+**2. Sequence diagram** — key interactions between components over time:
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Server
+    Client->>Server: request
+    Server-->>Client: response
+```
+
+**3. Component/dependency graph** — what depends on what:
+```mermaid
+graph TD
+    A --> B
+    A --> C
+    B --> D
+```
+
+**4. Entity relationship** (for data-heavy or library projects):
+```mermaid
+erDiagram
+    ENTITY_A ||--o{ ENTITY_B : has
+```
+
+**5. State machine** (for CLI tools, pipelines, or stateful services):
+```mermaid
+stateDiagram-v2
+    [*] --> Idle
+    Idle --> Running : start
+    Running --> Done : finish
+```
+
+Place diagrams inline within the relevant section (architecture diagram in the Architecture section, sequence diagram near Entry Points or the type-specific section, etc.). Do **not** group all diagrams into a single "Diagrams" section.
 
 ---
 

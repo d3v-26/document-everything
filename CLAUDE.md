@@ -9,9 +9,10 @@ A Claude Code skill that documents any codebase using the industry standard for 
 ```
 skills/
 └── document-everything/
-    ├── SKILL.md                                   ← trigger + 8-step workflow
+    ├── SKILL.md                                   ← trigger + 10-step workflow (two-pass analysis + DeepWiki MCP)
     ├── scripts/
-    │   └── scan_project.py                        ← project scanner (JSON manifest + type detection)
+    │   ├── scan_project.py                        ← project scanner (JSON manifest + type detection + priority scoring)
+    │   └── mcp_server.py                          ← local MCP server (scan_repo, generate_wiki, ask_repo tools)
     └── references/
         ├── doc-templates.md                       ← standardized Nextflow-inspired report skeleton
         ├── file-classification.md                 ← how to analyze each file type, infer "why"
@@ -28,13 +29,15 @@ skills/
 
 ## How the Skill Works
 
-1. Runs `scan_project.py` → JSON manifest with file classification and `project_type`
+1. Runs `scan_project.py` → JSON manifest with file classification, `project_type`, and priority-sorted `reading_order`
 2. Loads `doc-templates.md` (report skeleton) + `cross-cutting-standards.md`
 3. Loads the matching `project-types/[type].md` guide
-4. Reads files by priority: entry → README → config → source (sampled for large projects)
-5. Generates report using standard structure + type-specific sections
-6. Writes output (size-adaptive)
-7. Updates project's `CLAUDE.md`
+4. **[Optional]** Calls DeepWiki MCP (`https://mcp.deepwiki.com/mcp`) if repo is public GitHub — enriches outline
+5. **Pass 1**: Reads entry points + README + config → drafts structural outline
+6. **Pass 2**: Reads files in `reading_order` (priority: entry → heavily-imported → recently-changed) → fills sections
+7. Generates report with Mermaid diagrams (architecture, data flow, sequence, ER, state machine)
+8. Writes output (size-adaptive)
+9. Updates project's `CLAUDE.md`
 
 ## Project Type Detection
 
@@ -110,20 +113,21 @@ python3 package_skill.py /Users/nik/Desktop/Projects/document-everything/skills/
 
 ## document-everything — Auto-generated Summary
 
-**What it does:** A Claude Code skill that scans any codebase, detects its project type, and generates a structured documentation report applying the matching industry standard (nf-core, OpenAPI 3.1, Diataxis, POSIX man pages, NumPy docstrings, dbt schema.yml, or standard-readme).
+**What it does:** A Claude Code skill that scans any codebase, detects its project type, and generates a structured documentation report with Mermaid diagrams, applying the matching industry standard (nf-core, OpenAPI 3.1, Diataxis, POSIX man pages, NumPy docstrings, dbt schema.yml, or standard-readme). Optionally enriches output via DeepWiki MCP for public GitHub repos.
 
-**Project type:** generic (skill project) | **Stack:** Python (stdlib only)
+**Project type:** generic (skill project) | **Stack:** Python (stdlib + `mcp` package for MCP server)
 
 **Key files:**
 | File | Role |
 |------|------|
-| `skills/document-everything/SKILL.md` | Skill entry point — triggers on doc requests, defines 8-step workflow |
-| `skills/document-everything/scripts/scan_project.py` | Project scanner — classifies files, detects type, emits JSON manifest |
-| `skills/document-everything/references/doc-templates.md` | Standard report skeleton used for all output |
+| `skills/document-everything/SKILL.md` | Skill entry point — triggers on doc requests, defines 10-step workflow with two-pass analysis |
+| `skills/document-everything/scripts/scan_project.py` | Project scanner — classifies files, detects type, computes priority scores + reading_order |
+| `skills/document-everything/scripts/mcp_server.py` | Local MCP server — exposes scan_repo, generate_wiki, ask_repo tools |
+| `skills/document-everything/references/doc-templates.md` | Standard report skeleton with Mermaid diagram guidance |
 | `skills/document-everything/references/cross-cutting-standards.md` | Diataxis, MADR, Keep a Changelog, standard-readme, C4 |
 | `skills/document-everything/references/project-types/` | Seven type-specific documentation guides |
 | `.claude-plugin/marketplace.json` | Marketplace registration for `/plugin marketplace add d3v-26/document-everything` |
 
 **How to run:** `python skills/document-everything/scripts/scan_project.py [project_root]` (scanner only); full skill via Claude Code natural language prompt.
 
-**Docs generated:** 2026-02-23 → `PROJECT_DOCS.md`
+**Docs generated:** 2026-03-02 → `PROJECT_DOCS.md`

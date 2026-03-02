@@ -10,6 +10,7 @@ A Claude Code skill that automatically documents any codebase — following indu
 - [What it generates](#what-it-generates)
 - [Cross-cutting standards](#cross-cutting-standards)
 - [How it works](#how-it-works)
+- [MCP integrations](#mcp-integrations)
 - [Contributing](#contributing)
 
 ## Install
@@ -67,7 +68,8 @@ The skill auto-detects your project type and applies the matching industry stand
 
 - **Header block** — project type, language(s), file count, git remote
 - **Summary** — what it does, who uses it, the core approach
-- **Architecture** — C4-style component diagram + table
+- **Architecture** — Mermaid component diagram + table
+- **Diagrams** — 3–5 Mermaid diagrams inline per section: data flow, sequence, dependency graph, ER, state machine
 - **Entry points** — how to invoke the project
 - **Type-specific section** — processes, routes, commands, exports, models, etc.
 - **Configuration** — all parameters from config files and `.env.example`
@@ -90,12 +92,58 @@ Regardless of project type, every report applies:
 
 ## How it works
 
-1. Runs `scripts/scan_project.py` → classifies every file into a JSON manifest, detects project type
+1. Runs `scripts/scan_project.py` → JSON manifest with file categories, project type, and a priority-sorted `reading_order` (ranked by import frequency + git recency)
 2. Loads the matching project-type guide and cross-cutting standards
-3. Reads files by priority: entry points → config → source (sampled intelligently on large projects)
-4. Infers "why" from code signals: comments, naming, git history, feature flags, patterns
-5. Writes the report using the industry-standard structure for the detected type
-6. Updates `CLAUDE.md` with a project summary
+3. **[Optional]** Enriches the outline via DeepWiki MCP if the repo is public on GitHub
+4. **Pass 1** — reads entry points + README + config to draft a structural outline
+5. **Pass 2** — reads remaining files in priority order (most-imported and recently-changed files first)
+6. Infers "why" from code signals: comments, naming, git history, feature flags, patterns
+7. Generates Mermaid diagrams (architecture, data flow, sequence, ER, state machine) inline in each section
+8. Writes the report using the industry-standard structure for the detected type
+9. Updates `CLAUDE.md` with a project summary
+
+## MCP integrations
+
+### DeepWiki MCP (public GitHub repos, free)
+
+For any repo hosted publicly on GitHub, the skill can call Cognition's free DeepWiki MCP to enrich its analysis before reading local files:
+
+```bash
+claude mcp add -s user -t http deepwiki https://mcp.deepwiki.com/mcp
+```
+
+Once added, the skill automatically uses it when it detects a `github.com` remote. No API key required.
+
+### Local MCP server (any local repo)
+
+`scripts/mcp_server.py` exposes the skill's capabilities as MCP tools so any MCP-compatible client can use them:
+
+| Tool | What it does |
+|------|-------------|
+| `scan_repo(path)` | Returns the full JSON manifest for a local repo |
+| `generate_wiki(path, deep)` | Triggers the full documentation workflow |
+| `ask_repo(question, path)` | Answers a specific question about the codebase |
+
+**Setup:**
+
+```bash
+pip install mcp
+
+# Claude Code
+claude mcp add -s user document-everything python /path/to/skills/document-everything/scripts/mcp_server.py
+
+# Cursor / Windsurf (~/.cursor/mcp.json or mcp_config.json)
+{
+  "mcpServers": {
+    "document-everything": {
+      "command": "python",
+      "args": ["/path/to/skills/document-everything/scripts/mcp_server.py"]
+    }
+  }
+}
+```
+
+---
 
 ## Contributing
 

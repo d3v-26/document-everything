@@ -15,10 +15,12 @@ Output: JSON to stdout
 
 import json
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
 from datetime import datetime, timezone
+from collections import defaultdict
 
 # Directories to always skip
 SKIP_DIRS = {
@@ -244,6 +246,96 @@ def classify_file(path: Path, rel_path: Path) -> dict:
     }
 
 
+def get_recently_changed_files(root: Path, n: int = 30) -> dict[str, int]:
+    """
+    Returns a map of rel_path → recency_score using git log.
+    Files changed in the last N commits get scored by recency (most recent = highest score).
+    """
+    scores: dict[str, int] = {}
+    try:
+        result = subprocess.run(
+            ["git", "log", f"--max-count={n}", "--name-only", "--format="],
+            capture_output=True, text=True, cwd=root, timeout=10
+        )
+        if result.returncode != 0:
+            return scores
+        # Assign score: file in most recent commit gets n points, next n-1, etc.
+        current_score = n
+        for line in result.stdout.splitlines():
+            line = line.strip()
+            if not line:
+                current_score = max(0, current_score - 1)
+                continue
+            if line not in scores:
+                scores[line] = current_score
+    except (subprocess.TimeoutExpired, FileNotFoundError):
+        pass
+    return scores
+
+
+# Relative import patterns per language
+_IMPORT_PATTERNS = [
+    # Python: from .foo import bar  /  from ..pkg import x
+    re.compile(r'from\s+(\.+[\w./]+)\s+import'),
+    # Python: import .foo (rare but valid)
+    re.compile(r'^import\s+(\.[\w.]+)', re.MULTILINE),
+    # JS/TS: import ... from './foo'  /  require('./foo')
+    re.compile(r'''(?:import\s+.*?from\s+|require\s*\()\s*['"](\./[^'"]+)['"]'''),
+    re.compile(r'''(?:import\s+.*?from\s+|require\s*\()\s*['"](\.\./[^'"]+)['"]'''),
+]
+
+
+def _resolve_relative_import(importer: Path, raw: str, root: Path) -> str | None:
+    """Turn a relative import string into a normalized repo-relative path string."""
+    raw = raw.strip().lstrip(".")
+    raw = raw.replace(".", "/")
+    candidate_base = (importer.parent / raw).resolve()
+    for ext in ("", ".py", ".js", ".ts", ".tsx", ".jsx"):
+        candidate = Path(str(candidate_base) + ext)
+        try:
+            rel = candidate.relative_to(root)
+            return str(rel)
+        except ValueError:
+            pass
+    # Try as directory index
+    for idx in ("index.js", "index.ts", "__init__.py"):
+        candidate = candidate_base / idx
+        try:
+            rel = candidate.relative_to(root)
+            return str(rel)
+        except ValueError:
+            pass
+    return None
+
+
+def compute_import_references(files: list[dict], root: Path) -> dict[str, int]:
+    """
+    Count how many other files import each file.
+    Returns map of rel_path → import_count.
+    """
+    ref_count: dict[str, int] = defaultdict(int)
+    known_paths = {f["path"] for f in files}
+
+    source_files = [f for f in files if f["category"] in ("source", "entry")
+                    and f["language"] in ("python", "javascript", "typescript")]
+
+    for file_info in source_files:
+        file_path = root / file_info["path"]
+        try:
+            text = file_path.read_text(errors="ignore")
+        except OSError:
+            continue
+
+        for pattern in _IMPORT_PATTERNS:
+            for match in pattern.finditer(text):
+                raw = match.group(1)
+                resolved = _resolve_relative_import(file_path, raw, root)
+                if resolved and resolved in known_paths and resolved != file_info["path"]:
+                    ref_count[resolved] += 1
+
+    return dict(ref_count)
+
+
 def get_git_info(root: Path, rel_path: str) -> dict | None:
     """Get last commit info for a file via git log."""
     try:
@@ -345,6 +437,25 @@ def scan_project(root_path: str | None = None) -> dict:
 
     project_type = detect_project_type(files, root)
 
+    # Compute priority scores for smarter reading order
+    recency_scores = get_recently_changed_files(root) if git else {}
+    import_counts = compute_import_references(files, root)
+
+    category_priority = {"entry": 100, "source": 50, "config": 30, "test": 10, "docs": 20, "other": 0}
+    for f in files:
+        base = category_priority.get(f["category"], 0)
+        recency = recency_scores.get(f["path"], 0)
+        imports = import_counts.get(f["path"], 0) * 5  # 5 pts per file that imports this one
+        f["priority_score"] = base + recency + imports
+        if imports > 0:
+            f["import_count"] = import_counts[f["path"]]
+
+    # reading_order: paths sorted by priority_score descending (for large-repo sampling)
+    reading_order = [
+        f["path"] for f in sorted(files, key=lambda x: x["priority_score"], reverse=True)
+        if f["category"] in ("entry", "source", "config")
+    ]
+
     return {
         "root": str(root),
         "scanned_at": datetime.now(timezone.utc).isoformat(),
@@ -358,6 +469,7 @@ def scan_project(root_path: str | None = None) -> dict:
             "source_file_count": source_count,
             "size_class": size_class,
             "project_type": project_type,
+            "reading_order": reading_order,
         },
     }
 
