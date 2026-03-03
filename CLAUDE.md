@@ -94,12 +94,24 @@ python3 package_skill.py /Users/nik/Desktop/Projects/document-everything/skills/
   /Users/nik/Desktop/Projects/document-everything/dist
 ```
 
+## Running Tests
+
+```bash
+make test        # full suite (~80 cases)
+make test-fast   # skip integration tests
+make test-cov    # with coverage report
+```
+
+Tests in `tests/` cover: `classify_file`, `detect_project_type`, priority scoring, import resolution (Python + JS), git helpers, MCP tools, and end-to-end integration against this repo and the fixture projects.
+
 ## Key Development Files
 
 | File | Purpose |
 |------|---------|
 | `DISCOVERY.md` | Initial research on skill system and design decisions |
 | `PLAN.md` | Original implementation plan |
+| `tests/` | Pytest suite — unit + integration tests for `scan_project.py` and `mcp_server.py` |
+| `Makefile` | `make test` / `test-fast` / `test-cov` |
 | `dist/document-everything.skill` | Packaged skill (zip) ready to install |
 | `.claude-plugin/marketplace.json` | Marketplace registration for `/plugin marketplace add` |
 | `.claude-plugin/plugin.json` | Plugin manifest — required for Claude Code to load skills at runtime |

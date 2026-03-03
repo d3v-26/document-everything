@@ -145,6 +145,16 @@ claude mcp add -s user document-everything python /path/to/skills/document-every
 
 ---
 
+## Development
+
+```bash
+make test        # run full test suite
+make test-fast   # skip integration tests
+make test-cov    # with coverage report
+```
+
+Tests live in `tests/` and cover the scanner, classifier, project-type detection, import resolution, git helpers, priority scoring, and MCP tools (~80 cases).
+
 ## Contributing
 
 Bug reports and pull requests welcome at [d3v-26/document-everything](https://github.com/d3v-26/document-everything).
