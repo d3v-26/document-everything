@@ -11,6 +11,8 @@ A Claude Code skill that automatically documents any codebase — following indu
 - [Cross-cutting standards](#cross-cutting-standards)
 - [How it works](#how-it-works)
 - [MCP integrations](#mcp-integrations)
+  - [DeepWiki MCP](#deepwiki-mcp--enrich-analysis-for-public-github-repos)
+  - [Local MCP server](#local-mcp-server--use-the-skill-from-any-mcp-client)
 - [Contributing](#contributing)
 
 ## Install
@@ -26,7 +28,7 @@ Restart Claude Code after installing. The skill is auto-detected from context �
 
 ## Usage
 
-Just tell Claude what you want:
+Just tell Claude what you want — no slash command needed:
 
 ```
 document everything in this project
@@ -38,6 +40,28 @@ what does each file do and why?
 
 ```
 generate a report for my codebase
+```
+
+```
+explain my codebase
+```
+
+Claude will announce the detected project type and file count, then write the report when done:
+
+```
+Detected project type: library. Scanning complete — 34 source files in Python.
+Generating report...
+Report written to docs/overview.md, docs/files.md, docs/decisions.md
+```
+
+**Targeting a subdirectory or a different path?** Just mention it:
+
+```
+document everything in the api/ directory
+```
+
+```
+generate docs for ~/Projects/my-other-repo
 ```
 
 ## Project types
@@ -104,44 +128,110 @@ Regardless of project type, every report applies:
 
 ## MCP integrations
 
-### DeepWiki MCP (public GitHub repos, free)
+There are two separate MCP integrations — one that *enriches* the skill (DeepWiki), and one that *exposes* the skill to other clients (local server).
 
-For any repo hosted publicly on GitHub, the skill can call Cognition's free DeepWiki MCP to enrich its analysis before reading local files:
+### DeepWiki MCP — enrich analysis for public GitHub repos
+
+For repos hosted publicly on GitHub, the skill can call Cognition's free [DeepWiki MCP](https://deepwiki.com) to pre-seed its analysis with remotely-generated wiki content before reading local files. This is purely additive — the skill always performs its own local scan regardless.
+
+**Setup (one-time):**
 
 ```bash
 claude mcp add -s user -t http deepwiki https://mcp.deepwiki.com/mcp
 ```
 
-Once added, the skill automatically uses it when it detects a `github.com` remote. No API key required.
+No API key required. Once registered, the skill automatically detects a `github.com` remote and calls DeepWiki before Pass 1. If the MCP is unavailable or the repo is private, this step is silently skipped.
 
-### Local MCP server (any local repo)
+**What it adds:** DeepWiki provides an existing architectural outline and known-issue notes. The skill merges these with its own file reads — never copying verbatim, always verifying against local source.
 
-`scripts/mcp_server.py` exposes the skill's capabilities as MCP tools so any MCP-compatible client can use them:
+---
 
-| Tool | What it does |
-|------|-------------|
-| `scan_repo(path)` | Returns the full JSON manifest for a local repo |
-| `generate_wiki(path, deep)` | Triggers the full documentation workflow |
-| `ask_repo(question, path)` | Answers a specific question about the codebase |
+### Local MCP server — use the skill from any MCP client
 
-**Setup:**
+`scripts/mcp_server.py` exposes the skill's scanner and documentation workflow as three MCP tools, so Cursor, Windsurf, or any other MCP-compatible client can call them directly — without Claude Code installed.
+
+#### Setup
 
 ```bash
 pip install mcp
+```
 
-# Claude Code
-claude mcp add -s user document-everything python /path/to/skills/document-everything/scripts/mcp_server.py
+**Claude Code** (registers for your user, available in all projects):
 
-# Cursor / Windsurf (~/.cursor/mcp.json or mcp_config.json)
+```bash
+claude mcp add -s user document-everything python /path/to/scripts/mcp_server.py
+```
+
+**Cursor** (`~/.cursor/mcp.json`) or **Windsurf** (`~/.codeium/windsurf/mcp_config.json`):
+
+```json
 {
   "mcpServers": {
     "document-everything": {
       "command": "python",
-      "args": ["/path/to/skills/document-everything/scripts/mcp_server.py"]
+      "args": ["/path/to/scripts/mcp_server.py"]
     }
   }
 }
 ```
+
+The server runs over **stdio** by default (standard for Claude Code and most clients). To run it as an HTTP server for testing or integration:
+
+```bash
+python scripts/mcp_server.py --http        # listens on http://localhost:3333
+PORT=8080 python scripts/mcp_server.py --http   # custom port
+```
+
+#### Tools
+
+**`scan_repo(path)`**
+
+Scans a local repository and returns the full JSON manifest: file tree with categories, detected project type, size class, per-file priority scores, import counts, and a `reading_order` list sorted by relevance.
+
+```
+path  — absolute or relative path to the project root (default: current directory)
+```
+
+Returns a JSON string. Useful for building your own tooling on top of the scanner without triggering the full documentation workflow.
+
+---
+
+**`generate_wiki(path, deep)`**
+
+Triggers the complete document-everything workflow for a local repo. Returns a structured prompt with the embedded manifest that Claude executes to produce the report.
+
+```
+path  — path to the project root (default: current directory)
+deep  — if true, enables deep mode: reads up to 60 files (vs 40), generates 5+ Mermaid diagrams
+```
+
+Example — document a repo in deep mode:
+
+```
+generate_wiki("/home/user/my-api", deep=True)
+```
+
+Output is written to the same adaptive locations as the skill (`PROJECT_DOCS.md`, `docs/`, or `docs/modules/`) depending on project size.
+
+---
+
+**`ask_repo(question, path)`**
+
+Answers a specific question about a codebase without generating a full report. Scans the repo, ranks files by keyword relevance + priority score, and returns a context block (top 15 files + the question) for Claude to answer with file and line-number citations.
+
+```
+question  — the question to answer about the codebase (required)
+path      — path to the project root (default: current directory)
+```
+
+Example:
+
+```
+ask_repo("how does authentication work?", "/home/user/my-api")
+ask_repo("what does the retry logic do?")   # uses current directory
+```
+
+If the answer involves component interactions, Claude will also generate a Mermaid diagram explaining them.
 
 ---
 
