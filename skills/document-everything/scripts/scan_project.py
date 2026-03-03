@@ -287,24 +287,34 @@ _IMPORT_PATTERNS = [
 
 def _resolve_relative_import(importer: Path, raw: str, root: Path) -> str | None:
     """Turn a relative import string into a normalized repo-relative path string."""
-    raw = raw.strip().lstrip(".")
-    raw = raw.replace(".", "/")
-    candidate_base = (importer.parent / raw).resolve()
+    raw = raw.strip()
+
+    if raw.startswith("./") or raw.startswith("../"):
+        # JS/TS style: './utils' or '../lib/utils' — preserve path structure
+        candidate_base = (importer.parent / raw).resolve()
+    else:
+        # Python style: '.utils' or '..pkg' — convert dots to path separators
+        raw = raw.lstrip(".")
+        raw = raw.replace(".", "/")
+        candidate_base = (importer.parent / raw).resolve()
+
     for ext in ("", ".py", ".js", ".ts", ".tsx", ".jsx"):
         candidate = Path(str(candidate_base) + ext)
-        try:
-            rel = candidate.relative_to(root)
-            return str(rel)
-        except ValueError:
-            pass
+        if candidate.is_file():
+            try:
+                rel = candidate.relative_to(root)
+                return str(rel)
+            except ValueError:
+                pass
     # Try as directory index
     for idx in ("index.js", "index.ts", "__init__.py"):
         candidate = candidate_base / idx
-        try:
-            rel = candidate.relative_to(root)
-            return str(rel)
-        except ValueError:
-            pass
+        if candidate.is_file():
+            try:
+                rel = candidate.relative_to(root)
+                return str(rel)
+            except ValueError:
+                pass
     return None
 
 

@@ -1,0 +1,9 @@
+[project]
+name = "mylib"
+version = "0.1.0"
+description = "A test library fixture"
+requires-python = ">=3.10"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
